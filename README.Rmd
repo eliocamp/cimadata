@@ -37,7 +37,7 @@ library(cimadata)
 cmip_folder_set("~/DATOS/CMIP6/")
 ```
 
-```{r example, eval=FALSE, include=FALSE}
+```{r example, eval=FALSE}
 library(cimadata)
 cmip_folder_set("~/DATOS/CMIP6/")
 cmip_mount("elio.campitelli")
