@@ -1,0 +1,19 @@
+Package: cimadata
+Type: Package
+Title: Data utility for the Center of Atmospheric and Oceanic Research
+Version: 0.1.0
+Authors@R: c(person(given = "Elio",
+           family = "Campitelli",
+           role = c("cre", "aut"),
+           email = "elio.campitelli@cima.fcen.uba.ar",
+           comment = c(ORCID = "0000-0002-7742-9230")))
+Description: Get access to data in the CIMA servers.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    glue,
+    unglue,
+    ncdf4
+Remotes: moodymudskipper/unglue
+RoxygenNote: 6.1.1
