@@ -4,7 +4,7 @@
 \alias{cmip_available}
 \title{Lists available data}
 \usage{
-cmip_available(base_dir = "~/DATOS/CMIP6/")
+cmip_available(base_dir = cmip_folder_get())
 }
 \arguments{
 \item{base_dir}{directory of the CMIP6 databse}

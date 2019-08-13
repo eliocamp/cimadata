@@ -4,7 +4,7 @@
 #' @param base_dir directory where to mount the folder
 #'
 #' @export
-cmip_mount <- function(user, base_dir =  "~/DATOS/CMIP6") {
+cmip_mount <- function(user, base_dir = cmip_folder_get()) {
   server <- .cmip_server()
   folder <- .cmip_folder()
   command <- glue::glue("sshfs {user}@{server}:{folder} {base_dir}")
@@ -18,7 +18,7 @@ cmip_mount <- function(user, base_dir =  "~/DATOS/CMIP6") {
 #' @param base_dir directory of the CMIP6 databse
 #' @export
 #' @importFrom stats na.omit
-cmip_available <- function(base_dir = "~/DATOS/CMIP6/") {
+cmip_available <- function(base_dir = cmip_folder_get()) {
 
   if (!file.exists(file.path(base_dir, ".cima_cmip6"))) {
     stop("No CMIP6 folder structure in ", base_dir, ". Mount it first wiht `cmip_mount(base_dir = ", base_dir, ").")
@@ -51,6 +51,21 @@ cmip_available <- function(base_dir = "~/DATOS/CMIP6/") {
    }))
 
    cbind(available, info)
+}
+
+#' Sets and gets CMIP6 folder
+#'
+#' @param base_dir directory of the CMIP6 databse
+#'
+#'@export
+cmip_folder_set <- function(base_dir) {
+  options(CIMADATA.CMIP6 = base_dir)
+}
+
+#' @export
+#' @rdname cmip_folder_set
+cmip_folder_get <- function() {
+  getOption("CIMADATA.CMIP6", "~/CMIP6")
 }
 
 

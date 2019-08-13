@@ -4,7 +4,7 @@
 \alias{cmip_mount}
 \title{Mounts the CMIP6 database on a local folder}
 \usage{
-cmip_mount(user, base_dir = "~/DATOS/CMIP6")
+cmip_mount(user, base_dir = cmip_folder_get())
 }
 \arguments{
 \item{user}{user}
