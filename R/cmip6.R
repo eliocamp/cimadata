@@ -110,20 +110,29 @@ cmip_folder_get <- function() {
 }
 
 
+cmip_search <- function(query) {
 
-cmip_search <- function(models, experiments, vars, freq) {
-  query = list(experiment_id = paste0(experiments, collapse = ","),
-               facets = "mip_era,activity_id,model_cohort,product,source_id,institution_id,source_type,nominal_resolution,experiment_id,sub_experiment_id,variant_label,grid_label,table_id,frequency,realm,variable_id,cf_standard_name,data_node",
-               format = "application/solr+json",
-               frequency = freq,
-               latest = "true",
-               limit = "999",
-               offset = "0",
-               project = "CMIP6",
-               replica = "false",
-               source_id = paste0(models, collapse = ","),
-               type = "Dataset",
-               variable_id = paste0(vars, collapse = ","))
+  query$facets <- "mip_era,activity_id,model_cohort,product,source_id,institution_id,source_type,nominal_resolution,experiment_id,sub_experiment_id,variant_label,grid_label,table_id,frequency,realm,variable_id,cf_standard_name,data_node"
+  query$format <- "application/solr+json"
+  query$limit  <- "999"
+  query$offset <- "0"
+
+  query <- lapply(query, function(q) {
+    paste0(q, collapse = ",")
+  })
+
+  # query = list(experiment_id = paste0(experiments, collapse = ","),
+  #              facets = "mip_era,activity_id,model_cohort,product,source_id,institution_id,source_type,nominal_resolution,experiment_id,sub_experiment_id,variant_label,grid_label,table_id,frequency,realm,variable_id,cf_standard_name,data_node",
+  #              format = "application/solr+json",
+  #              frequency = freq,
+  #              latest = "true",
+  #              limit = "999",
+  #              offset = "0",
+  #              project = "CMIP6",
+  #              replica = "false",
+  #              source_id = paste0(models, collapse = ","),
+  #              type = "Dataset",
+  #              variable_id = paste0(vars, collapse = ","))
 
 
   search_results <- jsonlite::parse_json( httr::content(httr::GET("https://esgf-node.llnl.gov/esg-search/search",
