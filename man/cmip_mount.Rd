@@ -2,9 +2,12 @@
 % Please edit documentation in R/cmip6.R
 \name{cmip_mount}
 \alias{cmip_mount}
-\title{Mounts the CMIP6 database on a local folder}
+\alias{cmip_unmount}
+\title{Mounts and unmounts the CMIP6 database on a local folder}
 \usage{
 cmip_mount(user, base_dir = cmip_folder_get())
+
+cmip_unmount(base_dir = cmip_folder_get())
 }
 \arguments{
 \item{user}{user}
@@ -12,5 +15,5 @@ cmip_mount(user, base_dir = cmip_folder_get())
 \item{base_dir}{directory where to mount the folder}
 }
 \description{
-Mounts the CMIP6 database on a local folder
+Mounts and unmounts the CMIP6 database on a local folder
 }
