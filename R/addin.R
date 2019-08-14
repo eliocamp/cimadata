@@ -19,17 +19,6 @@ url_to_list <- function(url) {
            "\n)"))
 }
 
-query <- list(
-  type        = "Dataset",
-  replica     = "false",
-  latest      = "true",
-  source_id   = "AWI-CM-1-1-MR",
-  project     = "CMIP6",
-  activity_id = "CMIP",
-  variable_id = "clivi,clt",
-  product     = "model-output"
-)
-
 url_to_list_Addin <- function() {
   context   <- rstudioapi::getActiveDocumentContext()
   selection <- context$selection[[1]]$text
