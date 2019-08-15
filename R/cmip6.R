@@ -61,28 +61,29 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
   files <- list.files(base_dir, recursive = TRUE)
   download <- vapply(files, function(f) strsplit(f, "/")[[1]][1] == "Download", TRUE)
   files <- files[!download]
+  pattern <- .cmip_pattern(type = "ensemble", ext = "nc4")
 
-   available <- unglue::unglue_data(files, "{scenario}/{timestep}/{var}/{var}_Amon_{model}_{scenario}_{date_start}-{date_end}.nc4")
-   available <- available[, c("scenario", "model", "timestep", "var", "date_start", "date_end")]
-   available$file <- file.path(base_dir, files)
-   available <- stats::na.omit(available)
+  available <- unglue::unglue_data(files, pattern)
+  available <- available[, c("scenario", "model", "timestep", "var", "date_start", "date_end")]
+  available$file <- file.path(base_dir, files)
+  available <- stats::na.omit(available)
 
-   info <- do.call(rbind, lapply(seq_len(nrow(available)), function(i) {
-      nc <-  ncdf4::nc_open(available[i, ][["file"]])
-      ens_len <- ncdf4::nc_open(available[i, ][["file"]])$dim$ensemble$len
-      lon_res <- 360 / nc$dim$lon$len
-      lat_res <- 180 / nc$dim$lat$len
+  info <- do.call(rbind, lapply(seq_len(nrow(available)), function(i) {
+    nc <-  ncdf4::nc_open(available[i, ][["file"]])
+    ens_len <- ncdf4::nc_open(available[i, ][["file"]])$dim$ensemble$len
+    lon_res <- 360 / nc$dim$lon$len
+    lat_res <- 180 / nc$dim$lat$len
 
-      levs <- nc$dim$plev$len
-      if (is.null(levs)) levs <- 1
+    levs <- nc$dim$plev$len
+    if (is.null(levs)) levs <- 1
 
-      data.frame(n_members = ens_len,
-                 lon_res = lon_res,
-                 lat_res = lat_res,
-                 n_levs = levs)
-   }))
+    data.frame(n_members = ens_len,
+               lon_res = lon_res,
+               lat_res = lat_res,
+               n_levs = levs)
+  }))
 
-   cbind(available, info)
+  cbind(available, info)
 }
 
 #' Sets and gets CMIP6 folder
@@ -111,7 +112,6 @@ cmip_folder_get <- function() {
 
 
 cmip_search <- function(query) {
-  query$facets  <- "mip_era,activity_id,model_cohort,product,source_id,institution_id,source_type,nominal_resolution,experiment_id,sub_experiment_id,variant_label,grid_label,table_id,frequency,realm,variable_id,cf_standard_name,data_node"
   query$format  <- "application/solr+json"
   query$limit   <- "999"
   query$offset  <- "0"
@@ -130,7 +130,8 @@ cmip_search <- function(query) {
 
 
 .cmip_save_wget_one <- function(result, base_dir, file) {
-  wget_base <- "https://esgf-node.llnl.gov/esg-search/wget"
+  wget_base <- glue::glue("https://{result$index_node}/esg-search/wget")
+
   script <- httr::content(httr::GET(wget_base,
                                     query = list(distrib = "false",
                                                  dataset_id = result$id)))
@@ -154,18 +155,50 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
   })
 }
 
+.cmip_pattern <- function(type = c("ensamble", "member"), ext) {
+  if (missing(ext)) {
+    ext <- "{ext}"
+  }
+
+  if (type[1] == "member") {
+    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{model}_{experiment_id}_{member}_{date_start}-{date_end}.", ext)
+  } else {
+    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{model}_{experiment_id}_{date_start}-{date_end}.", ext)
+  }
+
+  return(pattern)
+}
+
+
+.cmip_cima_experiments <- function(experiment_id) {
+  map <- c("historical"   = "Historical",
+           "hist-GHG"     = "HistoricalGHG",
+           "hist-nat"     = "HistoricalNat",
+           "hist-stratO3" = "HistoricalO3",
+           "hist-sol"     = "HistoricalSol")
+
+  out <- map[experiment_id]
+  if (is.na(out)) {
+    out <- experiment_id
+  }
+
+  return(unname(out))
+}
 
 #' @importFrom utils tail
 .cmip_download_one <- function(result, base_dir, user = cmip_default_user_get()) {
+  pattern <- paste0("{base_dir}/Download/Format/{type}/", .cmip_pattern("member"))
 
-  pattern <- "{base_dir}/{scenario}/{timestep}/{var}/{model}/{type}/{member}_{date_start}-{date_end}.{ext}"
-
-  var <- result$variable[[1]]
-  scenario <- result$experiment_id[[1]]
-  timestep <- result$frequency[[1]]
+  variable_id <- result$variable_id[[1]]
+  experiment_id <- .cmip_cima_experiments(result$experiment_id[[1]])
+  frequency <- result$frequency[[1]]
   model <- result$source_id[[1]]
   date_start <- gsub("-", "", substr(result$datetime_start, 1, 7))
+  if(length(date_start) == 0) date_start <- "9999"
+
   date_end <- gsub("-", "", substr(result$datetime_stop, 1, 7))
+  if(length(date_end) == 0) date_end <- "9999"
+
   member <- result$member_id[[1]]
 
   type <- "wget"
@@ -183,18 +216,71 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
   ext <- "nc"
   file <- glue::glue(pattern)
 
+  if (file.exists(file)) {
+    message(file, " already present. skipping.")
+    return(file)
+  }
+
   if (!dir.exists(dirname(file))) {
     dir.create(dirname(file), recursive = TRUE)
   }
 
   # Change http to https (horrible hack)
-  out <- suppressWarnings(system(glue::glue("echo {pass} | bash {wget} -d -v -H {user}"), intern = TRUE, timeout = 2))
+  tmpdir <- tempdir()  # run script from tempdir because it creates a bunch of crap files.
+  out <- suppressWarnings(system(glue::glue("cd {tmpdir} && echo {pass} | bash {wget} -d -v -H {user}"), intern = TRUE, timeout = 5))
   command <- tail(out, 2)[1]
   command <- gsub("http:", "https:", command)
-  log <- system(paste0(command, " -o ", file), intern = TRUE, ignore.stderr = TRUE)
+  url <- tail(strsplit(command, " ")[[1]], 1)
+  download.file(url, destfile = file)
+  return(file)
+  # log <- invisible(system(paste0(command, " -O ", file), intern = TRUE))
 }
 
 
 cmip_download <- function(results, base_dir, user = cmip_default_user_get()) {
-  out <- lapply(results, .cmip_download_one, base_dir = base_dir, user = user)
+  files <- vapply(results, .cmip_download_one, "a", base_dir = base_dir, user = user)
+  return(files)
+}
+
+
+cmip_size <- function(results) {
+  res <- sum(vapply(results, function(r) r$size, FUN.VALUE = 1))/1024/1024
+  class(res) <- c("cmip_size", class(res))
+  res
+}
+
+
+print.cmip_size <- function(object) {
+  cat(signif(object, 3), "Mb")
+}
+
+
+cmip_consolidate <- function(files) {
+  # download_dir <- paste0(base_dir, "/Download/Format/raw")
+  # files <- list.files(download_dir, recursive = TRUE, pattern = ".nc")
+
+  data <- unglue::unglue_data(files, paste0("{base_dir}/Download/Format/raw/", .cmip_pattern("member", ext = "nc")))
+  data <- data[, setdiff(names(data),  c("variable_id.1", "experiment_id.1"))]
+  data$file <- files
+
+  uniques <- with(data, interaction(experiment_id, frequency, variable_id, model))
+
+  out <- split(data, uniques)
+
+  vapply(out, function(dt) {
+    out_file <- glue::glue_data(dt, paste0("{base_dir}/", .cmip_pattern("ensemble", ext = "nc")))[1]
+    dest_dir <- dirname(out_file)
+    if (!dir.exists(dest_dir)) {
+      dir.create(dest_dir, recursive = TRUE)
+    }
+
+    in_files <- paste0(dt$file, collapse = " ")
+
+    if (file.exists(out_file)) {
+      message(out_file, " already exists. Skipping.")
+      return(out_file)
+    }
+    system(glue::glue("ncecat --ovr -M -u ensemble {in_files} {out_file}"))
+    out_file
+  }, "file")
 }
