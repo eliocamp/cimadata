@@ -8,6 +8,7 @@
 }
 
 
-.check_folder <- function(dir) {
-
+.pattern_python_to_r <- function(pattern) {
+  pattern <- gsub("%\\(", "{", pattern)
+  gsub("\\)s", "}", pattern)
 }
