@@ -52,19 +52,21 @@ cmip_unmount <- function(base_dir = cmip_folder_get()) {
 #' @importFrom stats na.omit
 cmip_available <- function(base_dir = cmip_folder_get()) {
 
-  if (!file.exists(file.path(base_dir, ".cima_cmip6"))) {
-    stop("No CMIP6 folder structure in ", base_dir, ". Mount it first wiht `cmip_mount(base_dir = ", base_dir, ").")
-  }
+  # if (!file.exists(file.path(base_dir, ".cima_cmip6"))) {
+  # stop("No CMIP6 folder structure in ", base_dir, ". Mount it first wiht `cmip_mount(base_dir = ", base_dir, ").")
+  # }
 
 
-  base_dir <- "~/DATOS/CMIP6/"
+  # base_dir <- "~/DATOS/CMIP6/"
   files <- list.files(base_dir, recursive = TRUE)
   download <- vapply(files, function(f) strsplit(f, "/")[[1]][1] == "Download", TRUE)
   files <- files[!download]
   pattern <- .cmip_pattern(type = "ensemble", ext = "nc4")
 
   available <- unglue::unglue_data(files, pattern)
-  available <- available[, c("scenario", "model", "timestep", "var", "date_start", "date_end")]
+
+  available <- available[, !duplicated(gsub("\\.1", "", colnames(available)))]
+
   available$file <- file.path(base_dir, files)
   available <- stats::na.omit(available)
 
@@ -125,9 +127,48 @@ cmip_search <- function(query) {
                                                                   query = query)) )
 
   search_results <- search_results$response$docs
+  class(search_results) <- c("cmip_results", class(search_results))
   search_results
 }
 
+
+
+.cmip_parse_search <- function(results) {
+
+  parsed <- lapply(results, function(result) {
+    datetime_start <- result$datetime_start
+    if(length(datetime_start) == 0) datetime_start <- NA
+
+    datetime_stop <- result$datetime_stop
+    if(length(datetime_stop) == 0) datetime_stop <- NA
+
+    member <- unglue::unglue(result$member_id[[1]], "r{member}i{init}p{physics}f{forcing}")[[1]]
+
+    data.frame(
+      source_id = result$source_id[[1]],
+      experiment_id =  result$experiment_id[[1]],
+      forcing_index = member$forcing,
+      physics_index = member$physics,
+      initialization_index = member$init,
+      realization_index = member$member,
+      frequency =  result$frequency[[1]],
+      datetime_start = datetime_start,
+      datetime_stop = datetime_stop,
+      variable_id = result$variable_id[[1]],
+      nominal_resolution = result$nominal_resolution[[1]],
+      size = result$size/1024/1024
+    )
+  })
+
+  parsed <- do.call(rbind, parsed)
+  parsed
+}
+
+
+
+as.data.frame.cmip_results <- function(object) {
+  .cmip_parse_search(object)
+}
 
 .cmip_save_wget_one <- function(result, base_dir, file) {
   wget_base <- glue::glue("https://{result$index_node}/esg-search/wget")
@@ -139,6 +180,9 @@ cmip_search <- function(query) {
 
   if (missing(file)) {
     file <- file.path(base_dir, script_name)
+  }
+  if (!dir.exists(dirname(file))) {
+    dir.create(dirname(file), recursive = TRUE)
   }
 
   writeLines(script,
@@ -161,9 +205,9 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
   }
 
   if (type[1] == "member") {
-    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{model}_{experiment_id}_{member}_{date_start}-{date_end}.", ext)
+    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{source_id}_{experiment_id}_r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}_{datetime_start}-{datetime_stop}.", ext)
   } else {
-    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{model}_{experiment_id}_{date_start}-{date_end}.", ext)
+    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{source_id}_{experiment_id}_i{initialization_index}p{physics_index}f{forcing_index}_{datetime_start}-{datetime_stop}.", ext)
   }
 
   return(pattern)
@@ -187,39 +231,40 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
 
 #' @importFrom utils tail
 .cmip_download_one <- function(result, base_dir, user = cmip_default_user_get()) {
+  data <- as.data.frame.cmip_results(list(result))
+
+  data$base_dir <- base_dir
+
+  data$datetime_start <- gsub("-", "", substr(data$datetime_start, 1, 7))
+  data$datetime_stop <- gsub("-", "", substr(data$datetime_stop, 1, 7))
+
   pattern <- paste0("{base_dir}/Download/Format/{type}/", .cmip_pattern("member"))
 
-  variable_id <- result$variable_id[[1]]
-  experiment_id <- .cmip_cima_experiments(result$experiment_id[[1]])
-  frequency <- result$frequency[[1]]
-  model <- result$source_id[[1]]
-  date_start <- gsub("-", "", substr(result$datetime_start, 1, 7))
-  if(length(date_start) == 0) date_start <- "9999"
-
-  date_end <- gsub("-", "", substr(result$datetime_stop, 1, 7))
-  if(length(date_end) == 0) date_end <- "9999"
-
-  member <- result$member_id[[1]]
-
-  type <- "wget"
-  ext <- "sh"
-  file <- glue::glue(pattern)
-
-  if (!dir.exists(dirname(file))) {
-    dir.create(dirname(file), recursive = TRUE)
-  }
-
-  wget <- .cmip_save_wget_one(result, file = file)
-  pass <- cmip_key_get(user = user)
-  user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
-  type <- "raw"
-  ext <- "nc"
-  file <- glue::glue(pattern)
+  data$type <- "raw"
+  data$ext <- "nc"
+  file <- glue::glue_data(data, pattern)
 
   if (file.exists(file)) {
     message(file, " already present. skipping.")
     return(file)
   }
+
+
+  data$type <- "wget"
+  data$ext <- "sh"
+  wget_file <- glue::glue_data(data, pattern)
+
+
+  if (!dir.exists(dirname(file))) {
+    dir.create(dirname(file), recursive = TRUE)
+  }
+
+  wget <- .cmip_save_wget_one(result, file = wget_file)
+  pass <- cmip_key_get(user = user)
+  user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
+  type <- "raw"
+  ext <- "nc"
+
 
   if (!dir.exists(dirname(file))) {
     dir.create(dirname(file), recursive = TRUE)
@@ -227,11 +272,39 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
 
   # Change http to https (horrible hack)
   tmpdir <- tempdir()  # run script from tempdir because it creates a bunch of crap files.
-  out <- suppressWarnings(system(glue::glue("cd {tmpdir} && echo {pass} | bash {wget} -d -v -H {user}"), intern = TRUE, timeout = 5))
+  out <- suppressWarnings(system(glue::glue("cd {tmpdir} && echo {pass} | bash {wget} -d -v -i -H {user}"),
+                                 intern = TRUE, timeout = 3))
+  # browser()
   command <- tail(out, 2)[1]
-  command <- gsub("http:", "https:", command)
-  url <- tail(strsplit(command, " ")[[1]], 1)
-  download.file(url, destfile = file)
+  command <- glue::glue("{command} -o {tempfile()} -O {file}")
+  # browser()
+  message("Downloading ", file)
+
+  dow <- callr::r_bg(function(command) system(command), args = list(command = command))
+  on.exit({
+    if (dow$is_alive()) {
+      dow$kill()         # kill process
+      file.remove(file)  # remove unfinished file
+    } else if (dow$get_result() != 0) {
+      file.remove(file)  # remove unfinished file
+    }
+    file
+  })
+  # dow$wait()
+
+  pbar <- progress::progress_bar$new(format = "[:bar] :percent :rate eta: :eta", total = result$size, show_after = 1)
+
+  while (dow$is_alive()) {
+    Sys.sleep(0.1)
+    if (file.exists(file)) {
+      pbar$update(ratio = file.info(file)$size/result$size)
+    }
+  }
+  pbar$terminate()
+
+  # system(command, intern = TRUE)
+
+  # download.file(url, destfile = file)
   return(file)
   # log <- invisible(system(paste0(command, " -O ", file), intern = TRUE))
 }
@@ -255,20 +328,27 @@ print.cmip_size <- function(object) {
 }
 
 
-cmip_consolidate <- function(files) {
-  # download_dir <- paste0(base_dir, "/Download/Format/raw")
-  # files <- list.files(download_dir, recursive = TRUE, pattern = ".nc")
+cmip_consolidate <- function(files = NULL, base_dir) {
+  if (is.null(files)) {
+    download_dir <- paste0(base_dir, "/Download/Format/raw")
+    files <- list.files(download_dir, recursive = TRUE, pattern = ".nc", full.names = TRUE)
+  }
 
   data <- unglue::unglue_data(files, paste0("{base_dir}/Download/Format/raw/", .cmip_pattern("member", ext = "nc")))
   data <- data[, setdiff(names(data),  c("variable_id.1", "experiment_id.1"))]
   data$file <- files
 
-  uniques <- with(data, interaction(experiment_id, frequency, variable_id, model))
+  uniques <- with(data, interaction(experiment_id, frequency, variable_id, source_id, initialization_index, physics_index, forcing_index))
 
   out <- split(data, uniques)
 
-  vapply(out, function(dt) {
+  unlist(lapply(out, function(dt) {
+    if (nrow(dt) == 0) {
+      return(NULL)
+    }
     out_file <- glue::glue_data(dt, paste0("{base_dir}/", .cmip_pattern("ensemble", ext = "nc")))[1]
+    out_file4 <- glue::glue_data(dt, paste0("{base_dir}/", .cmip_pattern("ensemble", ext = "nc4")))[1]
+
     dest_dir <- dirname(out_file)
     if (!dir.exists(dest_dir)) {
       dir.create(dest_dir, recursive = TRUE)
@@ -276,11 +356,19 @@ cmip_consolidate <- function(files) {
 
     in_files <- paste0(dt$file, collapse = " ")
 
-    if (file.exists(out_file)) {
-      message(out_file, " already exists. Skipping.")
-      return(out_file)
+    if (file.exists(out_file4)) {
+      message(out_file4, " already exists. Skipping.")
+      return(out_file4)
     }
+
+    if (!dir.exists(dirname(out_file4))) {
+      dir.create(dirname(out_file4), recursive = TRUE)
+    }
+
     system(glue::glue("ncecat --ovr -M -u ensemble {in_files} {out_file}"))
+
+    system(glue::glue("nccopy -k nc4 -d4 -s {out_file} {out_file4}"))
+    file.remove(out_file)
     out_file
-  }, "file")
+  }))
 }
