@@ -33,7 +33,8 @@ cmip_mount <- function(user, base_dir = cmip_folder_get(), tunnel = FALSE) {
     tunnel_proc <- callr::r_bg(function(command) system(command), args = list(command = command))
     Sys.sleep(3L)
     command <- glue::glue("sshfs -p 4567 {user}@localhost:/datos3/CMIP6 {base_dir}")
-    system(command)
+    bg <- callr::r_bg(function(command) system(command), args = list(command = command))
+    # system(command)
     mount_point <- list(dir         = base_dir,
                         unmount     = glue::glue("fusermount -u {base_dir}"),
                         tunnel_proc = tunnel_proc)
