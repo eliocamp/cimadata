@@ -2,46 +2,64 @@
 #'
 #' @param user user
 #' @param base_dir directory where to mount the folder
+#' @param tunnel whether to connect using a tunnel.
 #'
 #' @export
-cmip_mount <- function(user, base_dir = cmip_folder_get()) {
+cmip_mount <- function(user, base_dir = cmip_folder_get(), tunnel = FALSE) {
   .check_system("sshfs")
-
+  .check_system("ssh")
   base_dir <- path.expand(base_dir)
   link_dir <- basename(base_dir)
 
-  if (dir.exists(base_dir)) {
-    if (!file.exists(file.path(base_dir, ".cima_cmip6"))) {
-      stop(base_dir, " already exists and is not a CMIP6 folder structure.")
-    } else {
-      message(base_dir, " is already a CMIP6 folder. Skiping.")
-      return(invisible(base_dir))
-    }
-  }
+  # if (dir.exists(base_dir)) {
+  #   if (!file.exists(file.path(base_dir, ".cima_cmip6"))) {
+  #     stop(base_dir, " already exists and is not a CMIP6 folder structure.")
+  #   } else {
+  #     message(base_dir, " is already a CMIP6 folder. Skiping.")
+  #     return(invisible(base_dir))
+  #   }
+  # }
 
   server <- .cmip_server()
   folder <- .cmip_folder()
 
   mount_dir <- tempdir()
-  dir.create(file.path(mount_dir, link_dir), mode = "775")
+  mount_dir <- base_dir
+  dir.create(file.path(mount_dir), mode = "775")
 
-  # dir.create(base_dir, recursive = TRUE)
-  command <- glue::glue("sshfs {user}@{server}:{folder} {mount_dir}/{link_dir}")
-  out <- system(command, intern = TRUE)
+  if (tunnel) {
+    command <- glue::glue("ssh {user}@portal.cima.fcen.uba.ar -L 4567:{server}:22 -N")
+    # system(command)
+    tunnel_proc <- callr::r_bg(function(command) system(command), args = list(command = command))
+    Sys.sleep(3L)
+    command <- glue::glue("sshfs -p 4567 {user}@localhost:/datos3/CMIP6 {base_dir}")
+    system(command)
+    mount_point <- list(dir         = base_dir,
+                        unmount     = glue::glue("fusermount -u {base_dir}"),
+                        tunnel_proc = tunnel_proc)
+  } else {
+    # dir.create(base_dir, recursive = TRUE)
+    command <- glue::glue("sshfs {user}@{server}:{folder} {mount_dir}")
+    system(command, intern = TRUE)
 
-  dir.create(dirname(base_dir))
+    mount_point <- list(dir = base_dir,
+                        unmount = glue::glue("fusermount -u {base_dir}"))
+  }
+  # system(glue::glue("ln -s {mount_dir}/{link_dir} {base_dir}"))
 
-  system(glue::glue("ln -s {mount_dir}/{link_dir} {base_dir}"))
-
-  return(invisible(base_dir))
+  return(mount_point)
 }
 
 #' @rdname cmip_mount
 #' @export
-cmip_unmount <- function(base_dir = cmip_folder_get()) {
+cmip_unmount <- function(mount_point) {
   .check_system("fusermount")
-  base_dir <- path.expand(base_dir)
-  system(glue::glue("fusermount -u {base_dir}"))
+
+  system(mount_point$unmount)
+
+  if (!is.null(mount_point$tunnel_proc)) {
+    mount_point$tunnel_proc$kill()
+  }
 }
 
 
@@ -249,11 +267,9 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
     return(file)
   }
 
-
   data$type <- "wget"
   data$ext <- "sh"
   wget_file <- glue::glue_data(data, pattern)
-
 
   if (!dir.exists(dirname(file))) {
     dir.create(dirname(file), recursive = TRUE)
@@ -279,7 +295,6 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
   command <- glue::glue("{command} -o {tempfile()} -O {file}")
   # browser()
   message("Downloading ", file)
-
   dow <- callr::r_bg(function(command) system(command), args = list(command = command))
   on.exit({
     if (dow$is_alive()) {
@@ -293,13 +308,14 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
   # dow$wait()
 
   pbar <- progress::progress_bar$new(format = "[:bar] :percent :rate eta: :eta", total = result$size, show_after = 1)
-
+# browser()
   while (dow$is_alive()) {
     Sys.sleep(0.1)
     if (file.exists(file)) {
       pbar$update(ratio = file.info(file)$size/result$size)
     }
   }
+  pbar$update(ratio = 1)
   pbar$terminate()
 
   # system(command, intern = TRUE)

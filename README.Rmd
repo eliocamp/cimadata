@@ -2,7 +2,11 @@
 output: github_document
 ---
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+
+```{r echo=FALSE, results='asis'}
+cat("<!-- README.md is generated from README.Rmd. Please edit that file -->")
+```
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
@@ -45,7 +49,7 @@ cmip_mount("elio.campitelli")
 
 Y luego se puede listar los modelos disponibles, junto con información
 
-```{r}
+```{r, eval = FALSE}
 head(cmip_available())
 ```
 
