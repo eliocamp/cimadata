@@ -4,7 +4,8 @@
 \alias{cmip_download}
 \title{Downloads CMIP6 data}
 \usage{
-cmip_download(results, base_dir, user = cmip_default_user_get())
+cmip_download(results, base_dir, user = cmip_default_user_get(),
+  system_config = "")
 }
 \arguments{
 \item{results}{a list of results as returned by [cmip_search]}
@@ -12,6 +13,8 @@ cmip_download(results, base_dir, user = cmip_default_user_get())
 \item{base_dir}{folder where to create the CIP6 structure}
 
 \item{user}{user for authenticating (see [cmip_key_set])}
+
+\item{system_config}{system commands to run before downloading (setting up proxy, etc...)}
 }
 \description{
 Downloads CMIP6 data

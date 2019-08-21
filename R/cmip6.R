@@ -257,9 +257,11 @@ as.data.frame.cmip_results <- function(x, ...) {
 #' @param results a list of results as returned by [cmip_search]
 #' @param base_dir folder where to create the CIP6 structure
 #' @param user user for authenticating (see [cmip_key_set])
+#' @param system_config system commands to run before downloading (setting up proxy, etc...)
 #'
 #' @export
-cmip_download <- function(results, base_dir, user = cmip_default_user_get()) {
+cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
+                          system_config = "") {
   downloaded_files <- rep(NA_character_, length = length(results))
   pass <- cmip_key_get(user = user)
   user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
@@ -330,7 +332,11 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get()) {
       dir.create(dirname(file), recursive = TRUE)
     }
 
-    command <- glue::glue("cd {dirname(file)} && echo {pass} | bash {wget} -d -v -i -H {user}")
+    if (system_config != "") {
+      system_config <- paste0(system_config, " && ")
+    }
+
+    command <- glue::glue("{system_config} cd {dirname(file)} && echo {pass} | bash {wget} -d -v -i -H {user}")
 
     message("Downloading ", file)
     dow <- callr::r_bg(function(command) system(command, intern = TRUE), args = list(command = command))
