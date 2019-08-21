@@ -9,7 +9,7 @@ cmip_mount <- function(user, base_dir = cmip_folder_get(), tunnel = FALSE) {
   .check_system("sshfs")
   .check_system("ssh")
   base_dir <- path.expand(base_dir)
-  link_dir <- basename(base_dir)
+  # link_dir <- basename(base_dir)
 
   # if (dir.exists(base_dir)) {
   #   if (!file.exists(file.path(base_dir, ".cima_cmip6"))) {
@@ -222,11 +222,7 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
   })
 }
 
-.cmip_pattern <- function(type = c("ensamble", "member"), ext) {
-  if (missing(ext)) {
-    ext <- "{ext}"
-  }
-
+.cmip_pattern <- function(type = c("ensamble", "member"), ext = "{ext}") {
   if (type[1] == "member") {
     pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{source_id}_{experiment_id}_r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}_{datetime_start}-{datetime_stop}.", ext)
   } else {
