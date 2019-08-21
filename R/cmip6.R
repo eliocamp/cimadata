@@ -262,10 +262,14 @@ as.data.frame.cmip_results <- function(x, ...) {
 #' @export
 cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
                           system_config = "") {
-  browser()
+  # browser()
   downloaded_files <- rep(NA_character_, length = length(results))
   pass <- cmip_key_get(user = user)
   user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
+
+  if (system_config != "") {
+    system_config <- paste0(system_config, " && ")
+  }
 
   on.exit({
     # If already started downloading
@@ -289,7 +293,7 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
 
 
   for (i in seq_along(results)) {
-    browser()
+    # browser()
     result <- results[[i]]
 
     data <- as.data.frame.cmip_results(list(result))
@@ -334,9 +338,6 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
       dir.create(dirname(file), recursive = TRUE)
     }
 
-    if (system_config != "") {
-      system_config <- paste0(system_config, " && ")
-    }
 
     command <- glue::glue("{system_config} cd {dirname(file)} && echo {pass} | bash {wget} -d -v -i -H {user}")
 
