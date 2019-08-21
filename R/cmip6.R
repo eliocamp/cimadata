@@ -262,6 +262,7 @@ as.data.frame.cmip_results <- function(x, ...) {
 #' @export
 cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
                           system_config = "") {
+  browser()
   downloaded_files <- rep(NA_character_, length = length(results))
   pass <- cmip_key_get(user = user)
   user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
@@ -288,6 +289,7 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
 
 
   for (i in seq_along(results)) {
+    browser()
     result <- results[[i]]
 
     data <- as.data.frame.cmip_results(list(result))
