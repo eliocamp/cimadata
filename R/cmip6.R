@@ -89,22 +89,26 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
   available$file <- file.path(base_dir, files)
   available <- stats::na.omit(available)
 
-  info <- do.call(rbind, lapply(seq_len(nrow(available)), function(i) {
-    nc <-  ncdf4::nc_open(available[i, ][["file"]])
-    ens_len <- ncdf4::nc_open(available[i, ][["file"]])$dim$ensemble$len
-    lon_res <- 360 / nc$dim$lon$len
-    lat_res <- 180 / nc$dim$lat$len
+  if (requireNamespace("ncdf4", quietly = TRUE)) {
+    info <- do.call(rbind, lapply(seq_len(nrow(available)), function(i) {
+      nc <-  ncdf4::nc_open(available[i, ][["file"]])
+      ens_len <- ncdf4::nc_open(available[i, ][["file"]])$dim$ensemble$len
+      lon_res <- 360 / nc$dim$lon$len
+      lat_res <- 180 / nc$dim$lat$len
 
-    levs <- nc$dim$plev$len
-    if (is.null(levs)) levs <- 1
+      levs <- nc$dim$plev$len
+      if (is.null(levs)) levs <- 1
 
-    data.frame(n_members = ens_len,
-               lon_res = lon_res,
-               lat_res = lat_res,
-               n_levs = levs)
-  }))
+      data.frame(n_members = ens_len,
+                 lon_res = lon_res,
+                 lat_res = lat_res,
+                 n_levs = levs)
+    }))
 
-  cbind(available, info)
+    available <- cbind(available, info)
+  }
+
+  return(available)
 }
 
 #' Sets and gets CMIP6 folder

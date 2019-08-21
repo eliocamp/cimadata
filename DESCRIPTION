@@ -14,10 +14,11 @@ LazyData: true
 Imports: 
     glue,
     unglue,
-    ncdf4,
     jsonlite,
     httr,
     getPass,
     keyring
 Remotes: moodymudskipper/unglue
 RoxygenNote: 6.1.1
+Suggests: 
+    ncdf4
