@@ -17,8 +17,11 @@ Imports:
     jsonlite,
     httr,
     getPass,
-    keyring
+    keyring,
+    callr,
+    progress
 Remotes: moodymudskipper/unglue
 RoxygenNote: 6.1.1
 Suggests: 
-    ncdf4
+    ncdf4,
+    rstudioapi

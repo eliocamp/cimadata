@@ -1,69 +1,3 @@
-#' Mounts and unmounts the CMIP6 database on a local folder
-#'
-#' @param user user
-#' @param base_dir directory where to mount the folder
-#' @param tunnel whether to connect using a tunnel.
-#'
-#' @export
-cmip_mount <- function(user, base_dir = cmip_folder_get(), tunnel = FALSE) {
-  .check_system("sshfs")
-  .check_system("ssh")
-  base_dir <- path.expand(base_dir)
-  # link_dir <- basename(base_dir)
-
-  # if (dir.exists(base_dir)) {
-  #   if (!file.exists(file.path(base_dir, ".cima_cmip6"))) {
-  #     stop(base_dir, " already exists and is not a CMIP6 folder structure.")
-  #   } else {
-  #     message(base_dir, " is already a CMIP6 folder. Skiping.")
-  #     return(invisible(base_dir))
-  #   }
-  # }
-
-  server <- .cmip_server()
-  folder <- .cmip_folder()
-
-  mount_dir <- tempdir()
-  mount_dir <- base_dir
-  dir.create(file.path(mount_dir), mode = "775")
-
-  if (tunnel) {
-    command <- glue::glue("ssh {user}@portal.cima.fcen.uba.ar -L 4567:{server}:22 -N")
-    # system(command)
-    tunnel_proc <- callr::r_bg(function(command) system(command), args = list(command = command))
-    Sys.sleep(3L)
-    command <- glue::glue("sshfs -p 4567 {user}@localhost:/datos3/CMIP6 {base_dir}")
-    bg <- callr::r_bg(function(command) system(command), args = list(command = command))
-    # system(command)
-    mount_point <- list(dir         = base_dir,
-                        unmount     = glue::glue("fusermount -u {base_dir}"),
-                        tunnel_proc = tunnel_proc)
-  } else {
-    # dir.create(base_dir, recursive = TRUE)
-    command <- glue::glue("sshfs {user}@{server}:{folder} {mount_dir}")
-    system(command, intern = TRUE)
-
-    mount_point <- list(dir = base_dir,
-                        unmount = glue::glue("fusermount -u {base_dir}"))
-  }
-  # system(glue::glue("ln -s {mount_dir}/{link_dir} {base_dir}"))
-
-  return(mount_point)
-}
-
-#' @rdname cmip_mount
-#' @export
-cmip_unmount <- function(mount_point) {
-  .check_system("fusermount")
-
-  system(mount_point$unmount)
-
-  if (!is.null(mount_point$tunnel_proc)) {
-    mount_point$tunnel_proc$kill()
-  }
-}
-
-
 #' Lists available data
 #'
 #' @param base_dir directory of the CMIP6 databse
@@ -136,6 +70,12 @@ cmip_folder_get <- function() {
 }
 
 
+#' Searches CMIP6 models
+#'
+#' @param query a list with the search query.
+#'
+#'
+#' @export
 cmip_search <- function(query) {
   query$format  <- "application/solr+json"
   query$limit   <- "999"
@@ -188,9 +128,9 @@ cmip_search <- function(query) {
 }
 
 
-
-as.data.frame.cmip_results <- function(object) {
-  .cmip_parse_search(object)
+#' @export
+as.data.frame.cmip_results <- function(x, ...) {
+  .cmip_parse_search(x)
 }
 
 .cmip_save_wget_one <- function(result, base_dir, file) {
@@ -327,24 +267,40 @@ cmip_save_wget <- function(results, base_dir, wait = 100) {
 }
 
 
+#' Downloads CMIP6 data
+#'
+#' @param results a list of results as returned by [cmip_search]
+#' @param base_dir folder where to create the CIP6 structure
+#' @param user user for authenticating (see [cmip_key_set])
+#'
+#' @export
 cmip_download <- function(results, base_dir, user = cmip_default_user_get()) {
   files <- vapply(results, .cmip_download_one, "a", base_dir = base_dir, user = user)
   return(files)
 }
 
-
+#' Gets the total size of the results in megabites
+#'
+#' @param results a list of results as returned by [cmip_search]
+#'
+#' @export
 cmip_size <- function(results) {
   res <- sum(vapply(results, function(r) r$size, FUN.VALUE = 1))/1024/1024
   class(res) <- c("cmip_size", class(res))
   res
 }
 
-
-print.cmip_size <- function(object) {
-  cat(signif(object, 3), "Mb")
+#' @export
+print.cmip_size <- function(x, ...) {
+  cat(signif(x, 3), "Mb")
 }
 
-
+#' Concatenates NetCDF files belonging to different members of the same experiment.
+#'
+#' @param files character vector of filenames
+#' @param base_dir (optional) base directory of the CMIP6 file structure to consolidate every file
+#'
+#' @export
 cmip_consolidate <- function(files = NULL, base_dir) {
   if (is.null(files)) {
     download_dir <- paste0(base_dir, "/Download/Format/raw")
