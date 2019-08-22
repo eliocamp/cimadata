@@ -15,6 +15,7 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
   download <- vapply(files, function(f) strsplit(f, "/")[[1]][1] == "Download", TRUE)
   files <- files[!download]
   pattern <- .cmip_pattern(type = "ensemble", ext = "nc4")
+  # pattern <- "{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{source_id}_{experiment_id}_{datetime_start}-{datetime_stop}.nc4"
 
   available <- unglue::unglue_data(files, pattern)
 
@@ -40,6 +41,8 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
     }))
 
     available <- cbind(available, info)
+  } else {
+    message("ncdf4 library not installed. Install with `install.packages(\"ncdf4\") to get more information")
   }
 
   return(available)
