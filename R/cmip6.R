@@ -305,7 +305,7 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
 
     pattern <- paste0("{base_dir}/Download/Format/{type}/", .cmip_pattern("member"))
 
-    data$type <- "raw"
+    data$type <- "Data_used"
     data$ext <- "nc"
     file <- glue::glue_data(data, pattern)
 
@@ -314,7 +314,7 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
     #   return(file)
     # }
 
-    data$type <- "wget"
+    data$type <- "Scripts_used"
     data$ext <- "sh"
     wget <- glue::glue_data(data, pattern)
 
@@ -327,7 +327,7 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
     }
 
 
-    type <- "raw"
+    type <- "Data_used"
     ext <- "nc"
 
     data$ext = "txt"
