@@ -179,80 +179,6 @@ as.data.frame.cmip_results <- function(x, ...) {
   return(unname(out))
 }
 
-#
-# .cmip_download_one <- function(result, base_dir, user = cmip_default_user_get()) {
-#
-#   data <- as.data.frame.cmip_results(list(result))
-#
-#   data$base_dir <- base_dir
-#
-#   data$datetime_start <- gsub("-", "", substr(data$datetime_start, 1, 7))
-#   data$datetime_stop <- gsub("-", "", substr(data$datetime_stop, 1, 7))
-#
-#   pattern <- paste0("{base_dir}/Download/Format/{type}/", .cmip_pattern("member"))
-#
-#   data$type <- "raw"
-#   data$ext <- "nc"
-#   file <- glue::glue_data(data, pattern)
-#
-#   if (file.exists(file)) {
-#     message(file, " already present. skipping.")
-#     return(file)
-#   }
-#
-#   data$type <- "wget"
-#   data$ext <- "sh"
-#   wget_file <- glue::glue_data(data, pattern)
-#
-#   if (!dir.exists(dirname(file))) {
-#     dir.create(dirname(file), recursive = TRUE)
-#   }
-#
-#   wget <- .cmip_save_wget_one(result, file = wget_file)
-#   pass <- cmip_key_get(user = user)
-#   user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
-#   type <- "raw"
-#   ext <- "nc"
-#
-#
-#   if (!dir.exists(dirname(file))) {
-#     dir.create(dirname(file), recursive = TRUE)
-#   }
-#
-#   command <- glue::glue("cd {dirname(file)} && echo {pass} | bash {wget} -d -v -i -H {user}")
-#
-#   message("Downloading ", file)
-#   dow <- callr::r_bg(function(command) system(command, intern = TRUE), args = list(command = command))
-#
-#   on.exit({
-#     if (dow$is_alive()) {
-#       dow$kill()         # kill process
-#       file.remove(file)  # remove unfinished file
-#     } else if (dow$get_result()[length(dow$get_result())] != "done") {
-#       warning("Errors encountered when downloading\n", file, "\nLog dumbed into ", log_file)
-#       file.remove(file)  # remove unfinished file
-#     }
-#     data$ext = "txt"
-#     data$type = "log"
-#     log_file <- glue::glue_data(data, pattern)
-#     dir.create(dirname(log_file), showWarnings = FALSE, recursive = TRUE)
-#     writeLines(dow$get_result(), con = log_file)
-#     file
-#   })
-#
-#   pbar <- progress::progress_bar$new(format = "[:bar] :percent :rate eta: :eta", total = result$size, show_after = 1)
-#
-#   while (dow$is_alive()) {
-#     Sys.sleep(0.1)
-#     if (file.exists(file) & !pbar$finished) {
-#       pbar$update(ratio = file.info(file)$size/result$size)
-#     }
-#   }
-#   pbar$terminate()
-#
-#
-#   return(file)
-# }
 
 
 #' Downloads CMIP6 data
@@ -344,12 +270,14 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
 
     command <- glue::glue("{system_config} cd {dirname(file)} && echo {pass} | bash {wget} -d -v -i -H {user}")
 
-    message("Downloading ", file)
+    pass <- "PASSWD"
+
+    command_mock <- glue::glue("{system_config} cd {dirname(file)} && echo {pass} | bash {wget} -d -v -i -H {user}")
+    message_time("Downloading ", file, " with command:\n", command_mock)
     dow <- callr::r_bg(function(command) system(command, intern = TRUE), args = list(command = command))
 
     pbar <- progress::progress_bar$new(format = "[:bar] :percent :rate eta: :eta", total = result$size, show_after = 1)
     while (dow$is_alive()) {
-      Sys.sleep(0.1)
       if (file.exists(file) & !pbar$finished) {
         pbar$update(ratio = file.info(file)$size/result$size)
       }
@@ -387,30 +315,83 @@ print.cmip_size <- function(x, ...) {
 #' @export
 cmip_consolidate <- function(files = NULL, base_dir) {
   if (is.null(files)) {
-    download_dir <- paste0(base_dir, "/Download/Format/raw")
+    download_dir <- paste0(base_dir, "/Download/Format/Data_used")
     files <- list.files(download_dir, recursive = TRUE, pattern = ".nc", full.names = TRUE)
   }
   files <- files[!is.na(files)]
 
-  data <- unglue::unglue_data(files, paste0("{base_dir}/Download/Format/raw/", .cmip_pattern("member", ext = "nc")))
+  data <- unglue::unglue_data(files, paste0("{base_dir}/Download/Format/Data_used/", .cmip_pattern("member", ext = "nc")))
   data <- data[, setdiff(names(data),  c("variable_id.1", "experiment_id.1"))]
   data$file <- files
+  data$remove <- FALSE
 
   uniques <- with(data, interaction(experiment_id, frequency, variable_id, source_id,
                                     initialization_index, physics_index, forcing_index,
-                                    grid_label))
-# browser()
+                                    grid_label, drop = TRUE))
   out <- split(data, uniques)
-
-  print(length(out))
-
   unlist(lapply(out, function(dt) {
-    # browser()
+
+    on.exit({
+      #Remove temporaty files, if present
+      tempfiles <- list.files(unique(dt$base_dir), pattern = "*.ncecat.tmp",
+                              recursive = TRUE, full.names = TRUE)
+      file.remove(tempfiles)
+
+      # Remove other files
+      file.remove(dt[dt$remove == TRUE, ]$file)
+    })
+
     if (nrow(dt) == 0) {
       return(NULL)
     }
-    out_file <- glue::glue_data(dt, paste0("{base_dir}/", .cmip_pattern("ensemble", ext = "nc")))[1]
-    out_file4 <- glue::glue_data(dt, paste0("{base_dir}/", .cmip_pattern("ensemble", ext = "nc4")))[1]
+    # browser()
+
+    dt_future <- dt
+    dt_future$datetime_start <- min(dt_future$datetime_start)
+    dt_future$datetime_stop <- max(dt_future$datetime_stop)
+    out_file <- glue::glue_data(dt_future, paste0("{base_dir}/", .cmip_pattern("ensemble", ext = "nc4")))[1]
+
+    if (file.exists(out_file)) {
+      message_time(out_file, " already exists. Skipping.")
+      return(out_file)
+    }
+
+    message_time(paste0(c("Processing files:", dt$file), collapse = "\n"))
+
+    # Join dates
+    members <- split(dt, dt$realization_index)
+    members <- lapply(members, function(m) {
+      if (nrow(m) == 1) {
+        return(m)
+      }
+      in_files <- paste0(m$file, collapse = " ")
+
+      m$datetime_start <- min(m$datetime_start)
+      m$datetime_stop <- max(m$datetime_stop)
+      m <- m[1, ]
+      out_file <- glue::glue_data(m, paste0("{base_dir}/", .cmip_pattern("member", ext = "nc")))[1]
+
+      m$file <- out_file
+      m$remove <- TRUE
+
+      if (file.exists(out_file)) {
+        message_time("Member #", unique(m$realization_index), " already concatenated. Skipping.")
+        return(m)
+      }
+
+      dest_dir <- dirname(out_file)
+      if (!dir.exists(dest_dir)) {
+        dir.create(dest_dir, recursive = TRUE)
+      }
+
+
+      command <- glue::glue("ncrcat --ovr {in_files} {out_file}")
+      message_time("Concatenating member #", unique(m$realization_index), " with command:\n", command)
+      system(command)
+      return(m)
+    })
+
+    dt <- do.call(rbind, members)
 
     dest_dir <- dirname(out_file)
     if (!dir.exists(dest_dir)) {
@@ -418,29 +399,21 @@ cmip_consolidate <- function(files = NULL, base_dir) {
     }
 
     in_files <- paste0(dt$file, collapse = " ")
+    command <- glue::glue("ncecat --ovr -M -4 -u ensemble {in_files} {out_file}")
+    message_time("Merging members into ", out_file, " with command: \n", command)
+    system(command)
 
-    if (file.exists(out_file4)) {
-      message(out_file4, " already exists. Skipping.")
-      return(out_file4)
-    }
 
-    if (!dir.exists(dirname(out_file4))) {
-      dir.create(dirname(out_file4), recursive = TRUE)
-    }
-
-    on.exit({
-      tempfiles <- list.files(unique(dt$base_dir), pattern = "*.ncecat.tmp",
-                              recursive = TRUE, full.names = TRUE)
-      # print(tempfiles)
-      file.remove(tempfiles)
-    })
-
-    message("Merging members into ", out_file)
-    system(glue::glue("ncecat --ovr -M -u ensemble {in_files} {out_file}"))
-
-    message("Reformating into NetCDF4 file")
-    system(glue::glue("nccopy -k nc4 -d4 -s {out_file} {out_file4}"))
-    file.remove(out_file)
     out_file
   }))
 }
+
+
+
+message_time <- function(..., domain = NULL, appendLF = TRUE) {
+  text <- paste0(...)
+  time <- paste0("[", Sys.time(), "]")
+  message(paste0(time, ": ", text), domain = domain, appendLF = appendLF)
+}
+
+
