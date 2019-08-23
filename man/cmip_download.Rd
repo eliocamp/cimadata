@@ -5,7 +5,7 @@
 \title{Downloads CMIP6 data}
 \usage{
 cmip_download(results, base_dir, user = cmip_default_user_get(),
-  system_config = "")
+  system_config = "", progress_bar = TRUE)
 }
 \arguments{
 \item{results}{a list of results as returned by [cmip_search]}
@@ -15,6 +15,8 @@ cmip_download(results, base_dir, user = cmip_default_user_get(),
 \item{user}{user for authenticating (see [cmip_key_set])}
 
 \item{system_config}{system commands to run before downloading (setting up proxy, etc...)}
+
+\item{progress_bar}{whether to draw a progress bar when downloading files}
 }
 \description{
 Downloads CMIP6 data

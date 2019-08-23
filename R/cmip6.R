@@ -187,10 +187,11 @@ as.data.frame.cmip_results <- function(x, ...) {
 #' @param base_dir folder where to create the CIP6 structure
 #' @param user user for authenticating (see [cmip_key_set])
 #' @param system_config system commands to run before downloading (setting up proxy, etc...)
+#' @param progress_bar whether to draw a progress bar when downloading files
 #'
 #' @export
 cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
-                          system_config = "") {
+                          system_config = "", progress_bar = TRUE) {
   # browser()
   downloaded_files <- rep(NA_character_, length = length(results))
   pass <- cmip_key_get(user = user)
@@ -276,13 +277,18 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
     message_time("Downloading ", file, " with command:\n", command_mock)
     dow <- callr::r_bg(function(command) system(command, intern = TRUE), args = list(command = command))
 
-    pbar <- progress::progress_bar$new(format = "[:bar] :percent :rate eta: :eta", total = result$size, show_after = 1)
-    while (dow$is_alive()) {
-      if (file.exists(file) & !pbar$finished) {
-        pbar$update(ratio = file.info(file)$size/result$size)
+    if (progress_bar == TRUE) {
+      pbar <- progress::progress_bar$new(format = "[:bar] :percent :rate eta: :eta", total = result$size, show_after = 1)
+      while (dow$is_alive()) {
+        if (file.exists(file) & !pbar$finished) {
+          pbar$update(ratio = file.info(file)$size/result$size)
+        }
       }
+      pbar$terminate()
+    } else {
+      dow$wait()
     }
-    pbar$terminate()
+
     dir.create(dirname(log_file), showWarnings = FALSE, recursive = TRUE)
     writeLines(dow$get_result(), con = log_file)
     remove(dow)
