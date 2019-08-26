@@ -45,6 +45,8 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
     message("ncdf4 library not installed. Install with `install.packages(\"ncdf4\") to get more information")
   }
 
+  available$size <- file.info(available$file)$size
+
   return(available)
 }
 
