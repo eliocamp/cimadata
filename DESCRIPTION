@@ -25,4 +25,7 @@ RoxygenNote: 7.0.0
 Roxygen: list(markdown = TRUE)
 Suggests: 
     ncdf4,
-    rstudioapi
+    rstudioapi,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

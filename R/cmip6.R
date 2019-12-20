@@ -225,6 +225,11 @@ as.data.frame.cmip_results <- function(x, ...) {
 #' (por ejemplo, para setear el proxy).
 #' @param progress_bar Mostrar una barra de progreso?
 #'
+#' @details
+#' Los archivos se descargan en una estructura de carpetas estándard:
+#' \[base_dir\]/Download/Format/Data_used/\{experiment_id\}/\{frequency\}/\{variable_id\}/\{variable_id\}_Amon_\{source_id\}_\{experiment_id\}_r\{realization_index\}i\{initialization_index\}p\{physics_index\}f\{forcing_index\}_\{grid_label\}_\{datetime_start\}-\{datetime_stop\}.\{ext\}
+#'
+#'
 #' @return
 #' Un vector de caracteres con los archivos descargados (que puede pasarse directamente a [cmip_consolidate()])
 #'
@@ -357,6 +362,7 @@ print.cmip_size <- function(x, ...) {
 #' @param files vector con los archivos a consolidar (por ejemplo, la dalida de [cmip_download()]).
 #' Si es `NULL`, consolida todos los archivos en `base_dir`.
 #' @param base_dir carpeta raiz de la base de datos. Sólo usado si `files` es `NULL`.
+#'
 #'
 #' @return
 #' Un vector de caracteres con los archivos consolidados.

@@ -30,3 +30,7 @@ Un vector de caracteres con los archivos descargados (que puede pasarse directam
 \description{
 Descarga datos de CMIP6
 }
+\details{
+Los archivos se descargan en una estructura de carpetas estándard:
+[base_dir]/Download/Format/Data_used/\{experiment_id\}/\{frequency\}/\{variable_id\}/\{variable_id\}\emph{Amon}\{source_id\}\emph{\{experiment_id\}\emph{r\{realization_index\}i\{initialization_index\}p\{physics_index\}f\{forcing_index\}}\{grid_label\}}\{datetime_start\}-\{datetime_stop\}.\{ext\}
+}

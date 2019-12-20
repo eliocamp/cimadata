@@ -17,7 +17,7 @@ url_to_list_Addin <- function() {
 
   request <- paste0("query <- list(\n",
                 paste0(unlist(elements), collapse = ",\n"),
-                "\n)")
+                "\n)\n")
 
   location <- context$selection[[1]]$range
   rstudioapi::modifyRange(location = location,
