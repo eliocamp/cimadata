@@ -36,20 +36,15 @@ devtools::install_github("eliocamp/cimadata")
 
 Promero hay que montar la carpeta localmente
 
-```{r include=FALSE}
-library(cimadata)
-cmip_folder_set("~/DATOS/CMIP6/")
-```
 
-```{r example, eval=FALSE}
+```{r}
 library(cimadata)
 cmip_folder_set("~/DATOS/CMIP6/")
-cmip_mount("elio.campitelli")
 ```
 
 Y luego se puede listar los modelos disponibles, junto con información
 
-```{r, eval = FALSE}
+```{r}
 head(cmip_available())
 ```
 
