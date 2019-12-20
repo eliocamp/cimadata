@@ -139,12 +139,22 @@ as.data.frame.cmip_results <- function(x, ...) {
   .cmip_parse_search(x)
 }
 
-.cmip_save_wget_one <- function(result, file) {
+.cmip_save_wget_one <- function(result, file, force_https = FALSE) {
   wget_base <- glue::glue("https://{result$index_node}/esg-search/wget")
 
   script <- httr::content(httr::GET(wget_base,
                                     query = list(distrib = "false",
                                                  dataset_id = result$id)))
+
+  # Force https
+  if (force_https) {
+    script <- strsplit(script, "\n")[[1]]
+    file_lines <- grep("EOF--dataset.file.url.chksum_type.chksum", script)
+    file_lines <- seq(file_lines[1], file_lines[2])
+    file_lines <- file_lines[-c(1, length(file_lines))]
+    script[file_lines] <- gsub("http:", "https:", script[file_lines])
+  }
+
   if (!dir.exists(dirname(file))) {
     dir.create(dirname(file), recursive = TRUE)
   }
