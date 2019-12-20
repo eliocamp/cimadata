@@ -1,21 +1,19 @@
-#' Password management
+#' Manejo de contraseñas
 #'
-#' Functions to save, get and remove cmip6tinr passwords.
+#' Funciones para guardar, obtener y eliminar contraseñas de CMIP6
 #'
-#' @param user,password username and password. If `NULL`, they will be asked
-#' interactively (recommended).
+#' @param user,password usuario y contraseña. Si son `NULL`, se piden interactivamente (recomendado).
 #'
-#' @details#'
-#' The default `NULL` value for user and password is the recommended method for
-#' secuirity, as otherwise your credentials will be saved in plain text at the
-#' command history.
+#' @details
+#' El método recomendado es dejar los valores como `NULL`. De esta manera, los datos de
+#' autenticación no quedan guardados en texto plano en la historia de comandos de R
 #'
 #' @name cmip_key
 #' @aliases cmip_key_remove cmip_key_get cmip_key_set
 NULL
 
 
-#' @describeIn cmip_key Set a new user/password combination
+#' @describeIn cmip_key Guarda una cambinación de usuario/contraseña
 #' @export
 cmip_key_set <- function(user = NULL, password = NULL) {
   if (is.null(user) || is.null(password)) {
@@ -39,7 +37,7 @@ cmip_key_set <- function(user = NULL, password = NULL) {
 }
 
 
-#' @describeIn cmip_key Get password for an user.
+#' @describeIn cmip_key Lee el password de un usuario.
 #' @export
 cmip_key_get <- function(user) {
   if(keyring::default_backend()$name != "env") {
@@ -61,29 +59,30 @@ cmip_key_remove <- function(user) {
 
 
 
-#' Default users
+#' Usuario por default
 #'
-#' @param user user to use as the default (`NULL` means no default user).
+#' @param user usuario para setear como default (`NULL` signfica que no hay usuario por default)
 #'
 #' @return
-#' `cmip_default_user_get()` returns the default user set with `cmip_default_user_get()`
-#' or the user if there's only one user saved with `cmip_key_set()`.
+#' `cmip_default_user_set()` define el usuario por defecto (para la sesión actual)
+#' y devuelve el usuario de forma invisible.
 #'
-#' `cmip_default_user_get()` sets the default user (for the current session)
-#' and returns the supplied user invisibly.
+#' `cmip_default_user_get()` devuelve el usuario por default seteado con
+#' `cmip_default_user_get()` o el usaurio guardad con `cmip_key_set()` en caso de
+#' haber sólo uno.
 #'
 #' @aliases cmip_default_user_get cmip_default_user_set
 #' @name cmip_default_user
 NULL
 
-#' @describeIn cmip_default_user Sets the default user.
+#' @describeIn cmip_default_user Define el usuario por default.
 #' @export
 cmip_default_user_set <- function(user = NULL) {
   options("CMIP.DEFAULT.USER" = user)
   return(invisible(user))
 }
 
-#' @describeIn cmip_default_user Gets the default user.
+#' @describeIn cmip_default_user Obtiene el usuario por default.
 #' @export
 cmip_default_user_get <- function() {
   # First priotiy: global option

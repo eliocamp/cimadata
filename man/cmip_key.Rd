@@ -5,29 +5,26 @@
 \alias{cmip_key_remove}
 \alias{cmip_key_get}
 \alias{cmip_key_set}
-\title{Password management}
+\title{Manejo de contraseñas}
 \usage{
 cmip_key_set(user = NULL, password = NULL)
 
 cmip_key_get(user)
 }
 \arguments{
-\item{user, password}{username and password. If `NULL`, they will be asked
-interactively (recommended).}
+\item{user, password}{usuario y contraseña. Si son \code{NULL}, se piden interactivamente (recomendado).}
 }
 \description{
-Functions to save, get and remove cmip6tinr passwords.
+Funciones para guardar, obtener y eliminar contraseñas de CMIP6
 }
 \details{
-#'
-The default `NULL` value for user and password is the recommended method for
-secuirity, as otherwise your credentials will be saved in plain text at the
-command history.
+El método recomendado es dejar los valores como \code{NULL}. De esta manera, los datos de
+autenticación no quedan guardados en texto plano en la historia de comandos de R
 }
 \section{Functions}{
 \itemize{
-\item \code{cmip_key_set}: Set a new user/password combination
+\item \code{cmip_key_set}: Guarda una cambinación de usuario/contraseña
 
-\item \code{cmip_key_get}: Get password for an user.
+\item \code{cmip_key_get}: Lee el password de un usuario.
 }}
 

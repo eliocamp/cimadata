@@ -3,15 +3,15 @@
 \name{cmip_folder_set}
 \alias{cmip_folder_set}
 \alias{cmip_folder_get}
-\title{Sets and gets CMIP6 folder}
+\title{Define y obtiene la carpeta raiz de los datos CMIP6}
 \usage{
 cmip_folder_set(base_dir)
 
 cmip_folder_get()
 }
 \arguments{
-\item{base_dir}{directory of the CMIP6 databse}
+\item{base_dir}{carpeta raiz de los datos de CMIP6}
 }
 \description{
-Sets and gets CMIP6 folder
+Define y obtiene la carpeta raiz de los datos CMIP6
 }

@@ -2,13 +2,13 @@
 % Please edit documentation in R/cmip6.R
 \name{cmip_available}
 \alias{cmip_available}
-\title{Lists available data}
+\title{Lista datos de CMIP6 disponibles en una carpeta}
 \usage{
 cmip_available(base_dir = cmip_folder_get())
 }
 \arguments{
-\item{base_dir}{directory of the CMIP6 databse}
+\item{base_dir}{carpeta raiz de la base de datos}
 }
 \description{
-Lists available data
+Lista datos de CMIP6 disponibles en una carpeta
 }

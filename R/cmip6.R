@@ -1,6 +1,6 @@
-#' Lists available data
+#' Lista datos de CMIP6 disponibles en una carpeta
 #'
-#' @param base_dir directory of the CMIP6 databse
+#' @param base_dir carpeta raiz de la base de datos
 #' @export
 #' @importFrom stats na.omit
 cmip_available <- function(base_dir = cmip_folder_get()) {
@@ -50,9 +50,9 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
   return(available)
 }
 
-#' Sets and gets CMIP6 folder
+#' Define y obtiene la carpeta raiz de los datos CMIP6
 #'
-#' @param base_dir directory of the CMIP6 databse
+#' @param base_dir carpeta raiz de los datos de CMIP6
 #'
 #'@export
 cmip_folder_set <- function(base_dir) {
@@ -62,7 +62,7 @@ cmip_folder_set <- function(base_dir) {
 #' @export
 #' @rdname cmip_folder_set
 cmip_folder_get <- function() {
-  getOption("CIMADATA.CMIP6", "~/CMIP6")
+  getOption("CIMADATA.CMIP6", stop("Carpeta raiz de CMIP6 no seteada. Use cmip_folder_set()."))
 }
 
 
@@ -75,10 +75,24 @@ cmip_folder_get <- function() {
 }
 
 
-#' Searches CMIP6 models
+#' Busca datos del CMIP6
 #'
-#' @param query a list with the search query.
+#' @param query una lista que define la búsqueda.
+#' @param url url de búsqueda (ver Detalles)
 #'
+#' @details
+#' La mejor forma de obtener una `query` válida es ir al portal de búsqueda
+#' ([https://esgf-node.llnl.gov/search/cmip6/](https://esgf-node.llnl.gov/search/cmip6/)),
+#'  realizar una búsqueda que se aproxime
+#' a lo que uno quiere. Debajo del número de resultados hay un link que dice
+#' "return results as JSON", copiar ese link y usar `cmip_url_to_list()` para convertir
+#' eso en una lista que luego uno puede modificar. En RStudio, se puede usar
+#' un AddIn para hacerlo más rápido.
+#'
+#' @return
+#'
+#' Una lista con los resultados de la búsqueda que puede ser pasada a un data.frame con
+#' [as.data.frame()]
 #'
 #' @export
 cmip_search <- function(query) {
@@ -100,6 +114,15 @@ cmip_search <- function(query) {
 }
 
 
+#' @rdname cmip_search
+#' @export
+cmip_url_to_list <- function(url) {
+  query <- httr::parse_url(url)$query
+  no_query <- c("offset", "limit", "facets", "format")
+  query <- query[!(names(query) %in% no_query)]
+
+  return(query)
+}
 
 .cmip_parse_search <- function(results) {
 
@@ -193,16 +216,20 @@ as.data.frame.cmip_results <- function(x, ...) {
 
 
 
-#' Downloads CMIP6 data
+#' Descarga datos de CMIP6
 #'
-#' @param results a list of results as returned by [cmip_search]
-#' @param base_dir folder where to create the CIP6 structure
-#' @param user user for authenticating (see [cmip_key_set])
-#' @param system_config system commands to run before downloading (setting up proxy, etc...)
-#' @param progress_bar whether to draw a progress bar when downloading files
+#' @param results una lista de resultados devuelta por [cmip_search()]
+#' @param base_dir carpeta raiz de la base de datos de CIP6
+#' @param user usuario para autenticar (ver [cmip_key_set])
+#' @param system_config comandos de sistema para correr antes de iniciar las descargas
+#' (por ejemplo, para setear el proxy).
+#' @param progress_bar Mostrar una barra de progreso?
+#'
+#' @return
+#' Un vector de caracteres con los archivos descargados (que puede pasarse directamente a [cmip_consolidate()])
 #'
 #' @export
-cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
+cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_default_user_get(),
                           system_config = "", progress_bar = TRUE) {
   # browser()
   downloaded_files <- rep(NA_character_, length = length(results))
@@ -309,9 +336,9 @@ cmip_download <- function(results, base_dir, user = cmip_default_user_get(),
   }
 }
 
-#' Gets the total size of the results in megabites
+#' Calcula el tamaño total de una búsqueda en megabites
 #'
-#' @param results a list of results as returned by [cmip_search]
+#' @inheritParams cmip_download
 #'
 #' @export
 cmip_size <- function(results) {
@@ -325,10 +352,14 @@ print.cmip_size <- function(x, ...) {
   cat(signif(x, 3), "Mb")
 }
 
-#' Concatenates NetCDF files belonging to different members of the same experiment.
+#' Concatena los archivos NetCDF de distintos miembros del mismo experimento
 #'
-#' @param files character vector of filenames
-#' @param base_dir (optional) base directory of the CMIP6 file structure to consolidate every file
+#' @param files vector con los archivos a consolidar (por ejemplo, la dalida de [cmip_download()]).
+#' Si es `NULL`, consolida todos los archivos en `base_dir`.
+#' @param base_dir carpeta raiz de la base de datos. Sólo usado si `files` es `NULL`.
+#'
+#' @return
+#' Un vector de caracteres con los archivos consolidados.
 #'
 #' @export
 cmip_consolidate <- function(files = NULL, base_dir) {

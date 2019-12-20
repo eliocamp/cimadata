@@ -2,13 +2,13 @@
 % Please edit documentation in R/cmip6.R
 \name{cmip_size}
 \alias{cmip_size}
-\title{Gets the total size of the results in megabites}
+\title{Calcula el tamaño total de una búsqueda en megabites}
 \usage{
 cmip_size(results)
 }
 \arguments{
-\item{results}{a list of results as returned by [cmip_search]}
+\item{results}{una lista de resultados devuelta por \code{\link[=cmip_search]{cmip_search()}}}
 }
 \description{
-Gets the total size of the results in megabites
+Calcula el tamaño total de una búsqueda en megabites
 }

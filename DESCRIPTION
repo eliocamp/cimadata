@@ -21,7 +21,8 @@ Imports:
     callr,
     progress
 Remotes: moodymudskipper/unglue
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.0
+Roxygen: list(markdown = TRUE)
 Suggests: 
     ncdf4,
     rstudioapi

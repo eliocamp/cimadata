@@ -2,22 +2,31 @@
 % Please edit documentation in R/cmip6.R
 \name{cmip_download}
 \alias{cmip_download}
-\title{Downloads CMIP6 data}
+\title{Descarga datos de CMIP6}
 \usage{
-cmip_download(results, base_dir, user = cmip_default_user_get(),
-  system_config = "", progress_bar = TRUE)
+cmip_download(
+  results,
+  base_dir = cmip_folder_get(),
+  user = cmip_default_user_get(),
+  system_config = "",
+  progress_bar = TRUE
+)
 }
 \arguments{
-\item{results}{a list of results as returned by [cmip_search]}
+\item{results}{una lista de resultados devuelta por \code{\link[=cmip_search]{cmip_search()}}}
 
-\item{base_dir}{folder where to create the CIP6 structure}
+\item{base_dir}{carpeta raiz de la base de datos de CIP6}
 
-\item{user}{user for authenticating (see [cmip_key_set])}
+\item{user}{usuario para autenticar (ver \link{cmip_key_set})}
 
-\item{system_config}{system commands to run before downloading (setting up proxy, etc...)}
+\item{system_config}{comandos de sistema para correr antes de iniciar las descargas
+(por ejemplo, para setear el proxy).}
 
-\item{progress_bar}{whether to draw a progress bar when downloading files}
+\item{progress_bar}{Mostrar una barra de progreso?}
+}
+\value{
+Un vector de caracteres con los archivos descargados (que puede pasarse directamente a \code{\link[=cmip_consolidate]{cmip_consolidate()}})
 }
 \description{
-Downloads CMIP6 data
+Descarga datos de CMIP6
 }

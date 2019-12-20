@@ -4,29 +4,30 @@
 \alias{cmip_default_user}
 \alias{cmip_default_user_get}
 \alias{cmip_default_user_set}
-\title{Default users}
+\title{Usuario por default}
 \usage{
 cmip_default_user_set(user = NULL)
 
 cmip_default_user_get()
 }
 \arguments{
-\item{user}{user to use as the default (`NULL` means no default user).}
+\item{user}{usuario para setear como default (\code{NULL} signfica que no hay usuario por default)}
 }
 \value{
-`cmip_default_user_get()` returns the default user set with `cmip_default_user_get()`
-or the user if there's only one user saved with `cmip_key_set()`.
+\code{cmip_default_user_set()} define el usuario por defecto (para la sesión actual)
+y devuelve el usuario de forma invisible.
 
-`cmip_default_user_get()` sets the default user (for the current session)
-and returns the supplied user invisibly.
+\code{cmip_default_user_get()} devuelve el usuario por default seteado con
+\code{cmip_default_user_get()} o el usaurio guardad con \code{cmip_key_set()} en caso de
+haber sólo uno.
 }
 \description{
-Default users
+Usuario por default
 }
 \section{Functions}{
 \itemize{
-\item \code{cmip_default_user_set}: Sets the default user.
+\item \code{cmip_default_user_set}: Define el usuario por default.
 
-\item \code{cmip_default_user_get}: Gets the default user.
+\item \code{cmip_default_user_get}: Obtiene el usuario por default.
 }}
 
