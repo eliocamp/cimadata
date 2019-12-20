@@ -4,9 +4,9 @@
 \name{cimadata-package}
 \alias{cimadata}
 \alias{cimadata-package}
-\title{cimadata: Data utility for the Center of Atmospheric and Oceanic Research}
+\title{cimadata: Paquete de R para datos del CIMA}
 \description{
-Get access to data in the CIMA servers.
+Utilidades para buscar, descargar datos y para luego leerlos.
 }
 \author{
 \strong{Maintainer}: Elio Campitelli \email{elio.campitelli@cima.fcen.uba.ar} (\href{https://orcid.org/0000-0002-7742-9230}{ORCID})

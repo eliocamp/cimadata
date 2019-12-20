@@ -1,13 +1,13 @@
 Package: cimadata
 Type: Package
-Title: Data utility for the Center of Atmospheric and Oceanic Research
+Title: Paquete de R para datos del CIMA
 Version: 0.1.0
 Authors@R: c(person(given = "Elio",
            family = "Campitelli",
            role = c("cre", "aut"),
            email = "elio.campitelli@cima.fcen.uba.ar",
            comment = c(ORCID = "0000-0002-7742-9230")))
-Description: Get access to data in the CIMA servers.
+Description: Utilidades para buscar, descargar datos y para luego leerlos.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
