@@ -171,6 +171,7 @@ as.data.frame.cmip_results <- function(x, ...) {
 
   # Force https
   if (force_https) {
+    browser()
     script <- strsplit(script, "\n")[[1]]
     file_lines <- grep("EOF--dataset.file.url.chksum_type.chksum", script)
     file_lines <- seq(file_lines[1], file_lines[2])
@@ -223,20 +224,23 @@ as.data.frame.cmip_results <- function(x, ...) {
 #' @param user usuario para autenticar (ver [cmip_key_set])
 #' @param system_config comandos de sistema para correr antes de iniciar las descargas
 #' (por ejemplo, para setear el proxy).
+#' @param force_https usar hptts? (ver Detalles)()
+#'
 #' @param progress_bar Mostrar una barra de progreso?
 #'
 #' @details
 #' Los archivos se descargan en una estructura de carpetas estándard:
 #' \[base_dir\]/Download/Format/Data_used/\{experiment_id\}/\{frequency\}/\{variable_id\}/\{variable_id\}_Amon_\{source_id\}_\{experiment_id\}_r\{realization_index\}i\{initialization_index\}p\{physics_index\}f\{forcing_index\}_\{grid_label\}_\{datetime_start\}-\{datetime_stop\}.\{ext\}
 #'
+#' Algunos modelos fallan al descargarse con el script original porque éste usa http y el servidor
+#' espera https. Con `force_https = TRUE` se cambia la URL interna del script para usar https.
 #'
 #' @return
 #' Un vector de caracteres con los archivos descargados (que puede pasarse directamente a [cmip_consolidate()])
 #'
 #' @export
 cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_default_user_get(),
-                          system_config = "", progress_bar = TRUE) {
-  # browser()
+                          system_config = "", force_https = FALSE, progress_bar = TRUE) {
   downloaded_files <- rep(NA_character_, length = length(results))
   pass <- cmip_key_get(user = user)
   user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
@@ -297,7 +301,7 @@ cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_def
     }
 
     if (!file.exists(wget)) {
-      wget <- .cmip_save_wget_one(result, file = wget)
+      wget <- .cmip_save_wget_one(result, file = wget, force_https = force_https)
     }
 
 

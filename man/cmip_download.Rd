@@ -9,6 +9,7 @@ cmip_download(
   base_dir = cmip_folder_get(),
   user = cmip_default_user_get(),
   system_config = "",
+  force_https = FALSE,
   progress_bar = TRUE
 )
 }
@@ -22,6 +23,8 @@ cmip_download(
 \item{system_config}{comandos de sistema para correr antes de iniciar las descargas
 (por ejemplo, para setear el proxy).}
 
+\item{force_https}{usar hptts? (ver Detalles)()}
+
 \item{progress_bar}{Mostrar una barra de progreso?}
 }
 \value{
@@ -33,4 +36,7 @@ Descarga datos de CMIP6
 \details{
 Los archivos se descargan en una estructura de carpetas estándard:
 [base_dir]/Download/Format/Data_used/\{experiment_id\}/\{frequency\}/\{variable_id\}/\{variable_id\}\emph{Amon}\{source_id\}\emph{\{experiment_id\}\emph{r\{realization_index\}i\{initialization_index\}p\{physics_index\}f\{forcing_index\}}\{grid_label\}}\{datetime_start\}-\{datetime_stop\}.\{ext\}
+
+Algunos modelos fallan al descargarse con el script original porque éste usa http y el servidor
+espera https. Con \code{force_https = TRUE} se cambia la URL interna del script para usar https.
 }
