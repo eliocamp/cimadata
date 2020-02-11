@@ -171,7 +171,6 @@ as.data.frame.cmip_results <- function(x, ...) {
 
   # Force https
   if (force_https) {
-    browser()
     script <- strsplit(script, "\n")[[1]]
     file_lines <- grep("EOF--dataset.file.url.chksum_type.chksum", script)
     file_lines <- seq(file_lines[1], file_lines[2])
@@ -271,7 +270,6 @@ cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_def
 
 
   for (i in seq_along(results)) {
-    # browser()
     result <- results[[i]]
 
     data <- as.data.frame.cmip_results(list(result))
@@ -403,7 +401,6 @@ cmip_consolidate <- function(files = NULL, base_dir) {
     if (nrow(dt) == 0) {
       return(NULL)
     }
-    # browser()
 
     dt_future <- dt
     dt_future$datetime_start <- min(dt_future$datetime_start)
