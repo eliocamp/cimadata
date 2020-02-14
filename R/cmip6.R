@@ -15,7 +15,7 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
   download <- vapply(files, function(f) strsplit(f, "/")[[1]][1] == "Download", TRUE)
   files <- files[!download]
   pattern <- .cmip_pattern(type = "ensemble", ext = "nc4")
-  # pattern <- "{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{source_id}_{experiment_id}_{datetime_start}-{datetime_stop}.nc4"
+  # pattern <- "{experiment_id}/{frequency}/{variable_id}/{variable_id}_  Amon_{source_id}_{experiment_id}_{datetime_start}-{datetime_stop}.nc4"
 
   available <- unglue::unglue_data(files, pattern)
 
@@ -142,6 +142,7 @@ cmip_url_to_list <- function(url) {
       physics_index = member$physics,
       initialization_index = member$init,
       realization_index = member$member,
+      table_id = result$table_id[[1]],
       frequency =  result$frequency[[1]],
       datetime_start = datetime_start,
       datetime_stop = datetime_stop,
@@ -190,9 +191,9 @@ as.data.frame.cmip_results <- function(x, ...) {
 
 .cmip_pattern <- function(type = c("ensamble", "member"), ext = "{ext}") {
   if (type[1] == "member") {
-    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{source_id}_{experiment_id}_r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
+    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
   } else {
-    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_Amon_{source_id}_{experiment_id}_i{initialization_index}p{physics_index}f{forcing_index}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
+    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_i{initialization_index}p{physics_index}f{forcing_index}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
   }
 
   return(pattern)
@@ -229,7 +230,7 @@ as.data.frame.cmip_results <- function(x, ...) {
 #'
 #' @details
 #' Los archivos se descargan en una estructura de carpetas estándard:
-#' \[base_dir\]/Download/Format/Data_used/\{experiment_id\}/\{frequency\}/\{variable_id\}/\{variable_id\}_Amon_\{source_id\}_\{experiment_id\}_r\{realization_index\}i\{initialization_index\}p\{physics_index\}f\{forcing_index\}_\{grid_label\}_\{datetime_start\}-\{datetime_stop\}.\{ext\}
+#' \[base_dir\]/Download/Format/Data_used/\{experiment_id\}/\{frequency\}/\{variable_id\}/\{variable_id\}_\{table_id\}_\{source_id\}_\{experiment_id\}_r\{realization_index\}i\{initialization_index\}p\{physics_index\}f\{forcing_index\}_\{grid_label\}_\{datetime_start\}-\{datetime_stop\}.\{ext\}
 #'
 #' Algunos modelos fallan al descargarse con el script original porque éste usa http y el servidor
 #' espera https. Con `force_https = TRUE` se cambia la URL interna del script para usar https.
@@ -377,7 +378,9 @@ cmip_consolidate <- function(files = NULL, base_dir) {
   }
   files <- files[!is.na(files)]
 
-  data <- unglue::unglue_data(files, paste0("{base_dir}/Download/Format/Data_used/", .cmip_pattern("member", ext = "nc")))
+  data <- unglue::unglue_data(files, paste0("{base_dir}/Download/Format/Data_used/",
+                                            .cmip_pattern("member", ext = "nc")),
+                              multiple = unique)
   data <- data[, setdiff(names(data),  c("variable_id.1", "experiment_id.1"))]
   data$file <- files
   data$remove <- FALSE
