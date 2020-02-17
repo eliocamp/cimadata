@@ -9,6 +9,7 @@
 
 
 .pattern_python_to_r <- function(pattern) {
-  pattern <- gsub("%\\(", "{", pattern)
-  gsub("\\)s", "}", pattern)
+  x <- gsub("%(", "{", x, fixed = TRUE)
+  x <- gsub(")s", "}", x, fixed = TRUE)
+  x
 }

@@ -97,7 +97,7 @@ cmip_folder_get <- function() {
 #' @export
 cmip_search <- function(query) {
   query$format  <- "application/solr+json"
-  query$limit   <- "999"
+  query$limit   <- "9999"
   query$offset  <- "0"
   query$replica <- "false"
 
@@ -113,6 +113,10 @@ cmip_search <- function(query) {
   search_results
 }
 
+#' @export
+print.cmip_results <- function(x, ...) {
+  cat("Found", length(x), "results")
+}
 
 #' @rdname cmip_search
 #' @export
@@ -124,8 +128,10 @@ cmip_url_to_list <- function(url) {
   return(query)
 }
 
-.cmip_parse_search <- function(results) {
 
+
+
+.cmip_parse_search <- function(results) {
   parsed <- lapply(results, function(result) {
     datetime_start <- result$datetime_start
     if(length(datetime_start) == 0) datetime_start <- NA
@@ -133,15 +139,23 @@ cmip_url_to_list <- function(url) {
     datetime_stop <- result$datetime_stop
     if(length(datetime_stop) == 0) datetime_stop <- NA
 
-    member <- unglue::unglue(result$member_id[[1]], "r{member}i{init}p{physics}f{forcing}")[[1]]
-
+    # data <- unglue::unglue_data(result[["title"]],
+    #                             .pattern_python_to_r(result[["dataset_id_template_"]][[1]]))
+    member <- unglue::unglue_data(result$variant_label[[1]],
+                                  c("{subexp}-r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
+                                    "r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}"))
     data.frame(
+      mip_era = result[["mip_era"]][[1]],
+      institution_id = result[["institution_id"]][[1]],
       source_id = result$source_id[[1]],
-      experiment_id =  result$experiment_id[[1]],
-      forcing_index = member$forcing,
-      physics_index = member$physics,
-      initialization_index = member$init,
-      realization_index = member$member,
+      experiment_id = result$experiment_id[[1]],
+      sub_experiment_id = result[["sub_experiment_id"]][[1]],
+      experiment_title = result[["experiment_title"]][[1]],
+      variant_label = result[["variant_label"]][[1]],
+      realization_index = member$realization_index,
+      initialization_index = member$initialization_index,
+      physics_index = member$physics_index,
+      forcing_index = member$forcing_index,
       table_id = result$table_id[[1]],
       frequency =  result$frequency[[1]],
       datetime_start = datetime_start,
@@ -190,14 +204,17 @@ as.data.frame.cmip_results <- function(x, ...) {
 
 
 .cmip_pattern <- function(type = c("ensamble", "member"), ext = "{ext}") {
-  if (type[1] == "member") {
-    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
-  } else {
-    pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_i{initialization_index}p{physics_index}f{forcing_index}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
-  }
+  pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_{variant_label}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
+  # if (type[1] == "member") {
+  #   pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_{variant_label}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
+  # } else {
+  #   pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_{sub_experiment_id}_i{initialization_index}p{physics_index}f{forcing_index}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
+  # }
 
   return(pattern)
 }
+
+
 
 
 .cmip_cima_experiments <- function(experiment_id) {
@@ -284,8 +301,9 @@ cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_def
 
     data$type <- "Data_used"
     data$ext <- "nc"
-    file <- glue::glue_data(data, pattern)
 
+    file <- glue::glue_data(data, pattern)
+browser()
     # if (file.exists(file)) {
     #   message(file, " already present. skipping.")
     #   return(file)
