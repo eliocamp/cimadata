@@ -115,7 +115,7 @@ cmip_search <- function(query) {
 
 #' @export
 print.cmip_results <- function(x, ...) {
-  cat("Found", length(x), "results")
+  cat("Found", length(x), "results totalling", round(cmip_size(x)), "Mb." )
 }
 
 #' @rdname cmip_search
@@ -129,7 +129,18 @@ cmip_url_to_list <- function(url) {
 }
 
 
+.parse_member_id <- function(member_id) {
+  data <- unglue::unglue_data(member_id,
+                      c("{sub_experiment_id}-r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
+                        "r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}"))
+  if (!("sub_experiment_id" %in% colnames(data))) {
+    data[["sub_experiment_id"]] <- rep("none", nrow(data))
+  }
 
+  data[["sub_experiment_id"]] <- replace(data[["sub_experiment_id"]], is.na(data[["sub_experiment_id"]]), "none")
+
+  data
+}
 
 .cmip_parse_search <- function(results) {
   parsed <- lapply(results, function(result) {
@@ -139,11 +150,10 @@ cmip_url_to_list <- function(url) {
     datetime_stop <- result$datetime_stop
     if(length(datetime_stop) == 0) datetime_stop <- NA
 
-    # data <- unglue::unglue_data(result[["title"]],
-    #                             .pattern_python_to_r(result[["dataset_id_template_"]][[1]]))
-    member <- unglue::unglue_data(result$variant_label[[1]],
-                                  c("{subexp}-r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
-                                    "r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}"))
+    data <- unglue::unglue_data(result[["title"]],
+                                .pattern_python_to_r(result[["dataset_id_template_"]][[1]]))
+    member <- .parse_member_id(data$member_id)
+
     data.frame(
       mip_era = result[["mip_era"]][[1]],
       institution_id = result[["institution_id"]][[1]],
@@ -151,7 +161,7 @@ cmip_url_to_list <- function(url) {
       experiment_id = result$experiment_id[[1]],
       sub_experiment_id = result[["sub_experiment_id"]][[1]],
       experiment_title = result[["experiment_title"]][[1]],
-      variant_label = result[["variant_label"]][[1]],
+      member_id = result[["member_id"]][[1]],
       realization_index = member$realization_index,
       initialization_index = member$initialization_index,
       physics_index = member$physics_index,
@@ -213,6 +223,16 @@ as.data.frame.cmip_results <- function(x, ...) {
 
   return(pattern)
 }
+
+.cmip_parse_filename <- function(filename) {
+
+  pattern <- .cmip_pattern()
+
+
+
+}
+
+
 
 
 
@@ -289,7 +309,6 @@ cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_def
 
   for (i in seq_along(results)) {
     result <- results[[i]]
-
     data <- as.data.frame.cmip_results(list(result))
 
     data$base_dir <- base_dir
@@ -303,7 +322,6 @@ cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_def
     data$ext <- "nc"
 
     file <- glue::glue_data(data, pattern)
-browser()
     # if (file.exists(file)) {
     #   message(file, " already present. skipping.")
     #   return(file)
@@ -399,11 +417,11 @@ cmip_consolidate <- function(files = NULL, base_dir) {
   data <- unglue::unglue_data(files, paste0("{base_dir}/Download/Format/Data_used/",
                                             .cmip_pattern("member", ext = "nc")),
                               multiple = unique)
-  data <- data[, setdiff(names(data),  c("variable_id.1", "experiment_id.1"))]
+  data <- cbind(data, .parse_member_id(data$member_id))
   data$file <- files
   data$remove <- FALSE
 
-  uniques <- with(data, interaction(experiment_id, frequency, variable_id, source_id,
+  uniques <- with(data, interaction(experiment_id, sub_experiment_id, frequency, variable_id, source_id,
                                     initialization_index, physics_index, forcing_index,
                                     grid_label, drop = TRUE))
   out <- split(data, uniques)
