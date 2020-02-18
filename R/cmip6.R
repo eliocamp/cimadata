@@ -17,12 +17,14 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
   pattern <- .cmip_pattern(type = "ensemble", ext = "nc4")
   # pattern <- "{experiment_id}/{frequency}/{variable_id}/{variable_id}_  Amon_{source_id}_{experiment_id}_{datetime_start}-{datetime_stop}.nc4"
 
-  available <- unglue::unglue_data(files, pattern)
+  available <- unglue::unglue_data(files, pattern, multiple = unique)
 
-  available <- available[, !duplicated(gsub("\\.1", "", colnames(available)))]
+  details <- .parse_member_id(available$member_id)
+  available <- cbind(available, details)
+
 
   available$file <- file.path(base_dir, files)
-  available <- stats::na.omit(available)
+  # available <- stats::na.omit(available)
 
   if (requireNamespace("ncdf4", quietly = TRUE)) {
     info <- do.call(rbind, lapply(seq_len(nrow(available)), function(i) {
@@ -132,12 +134,17 @@ cmip_url_to_list <- function(url) {
 .parse_member_id <- function(member_id) {
   data <- unglue::unglue_data(member_id,
                       c("{sub_experiment_id}-r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
-                        "r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}"))
+                        "r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
+                        "{sub_experiment_id}-i{initialization_index}p{physics_index}f{forcing_index}",
+                        "i{initialization_index}p{physics_index}f{forcing_index}"))
   if (!("sub_experiment_id" %in% colnames(data))) {
     data[["sub_experiment_id"]] <- rep("none", nrow(data))
   }
-
   data[["sub_experiment_id"]] <- replace(data[["sub_experiment_id"]], is.na(data[["sub_experiment_id"]]), "none")
+
+  if (!("realization_index" %in% colnames(data))) {
+    data[["realization_index"]] <- rep(NA, nrow(data))
+  }
 
   data
 }
@@ -214,7 +221,7 @@ as.data.frame.cmip_results <- function(x, ...) {
 
 
 .cmip_pattern <- function(type = c("ensamble", "member"), ext = "{ext}") {
-  pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_{variant_label}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
+  pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_{member_id}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
   # if (type[1] == "member") {
   #   pattern <- paste0("{experiment_id}/{frequency}/{variable_id}/{variable_id}_{table_id}_{source_id}_{experiment_id}_{variant_label}_{grid_label}_{datetime_start}-{datetime_stop}.", ext)
   # } else {
@@ -426,7 +433,6 @@ cmip_consolidate <- function(files = NULL, base_dir) {
                                     grid_label, drop = TRUE))
   out <- split(data, uniques)
   unlist(lapply(out, function(dt) {
-
     on.exit({
       #Remove temporaty files, if present
       tempfiles <- list.files(unique(dt$base_dir), pattern = "*.ncecat.tmp",
@@ -444,7 +450,9 @@ cmip_consolidate <- function(files = NULL, base_dir) {
     dt_future <- dt
     dt_future$datetime_start <- min(dt_future$datetime_start)
     dt_future$datetime_stop <- max(dt_future$datetime_stop)
-    out_file <- glue::glue_data(dt_future, paste0("{base_dir}/", .cmip_pattern("ensemble", ext = "nc4")))[1]
+    out_file <- dt_future[1, ]
+    out_file[["member_id"]] <- gsub("r\\d+", "", out_file[["member_id"]])
+    out_file <- glue::glue_data(out_file, paste0("{base_dir}/", .cmip_pattern("ensemble", ext = "nc4")))[1]
 
     if (file.exists(out_file)) {
       message_time(out_file, " already exists. Skipping.")
