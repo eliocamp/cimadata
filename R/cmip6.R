@@ -55,10 +55,23 @@ cmip_available <- function(base_dir = cmip_folder_get()) {
 #' Define y obtiene la carpeta raiz de los datos CMIP6
 #'
 #' @param base_dir carpeta raiz de los datos de CMIP6
+#' @param mode modo que define los permisos de esa carpeta.
+#' Puede ser un caracter válido de umask o los alias:
+#'  - "default": no hacer ningún cambio
+#'  - "shared": permisos de lectura, escritura y ejecución para todos los usuarios (777)
+#'  - "private": permisos de lectura, escritura y ejecución sólo para el usuario actual (770)
 #'
 #'@export
-cmip_folder_set <- function(base_dir) {
+cmip_folder_set <- function(base_dir, mode = "default") {
   options(CIMADATA.CMIP6 = base_dir)
+
+  mode <- switch(mode,
+                 shared = "0000",
+                 private = "7",
+                 default = Sys.umask(NA),
+                 mode)
+  options(CIMADATA.MODE = mode)
+
 }
 
 #' @export
@@ -133,10 +146,10 @@ cmip_url_to_list <- function(url) {
 
 .parse_member_id <- function(member_id) {
   data <- unglue::unglue_data(member_id,
-                      c("{sub_experiment_id}-r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
-                        "r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
-                        "{sub_experiment_id}-i{initialization_index}p{physics_index}f{forcing_index}",
-                        "i{initialization_index}p{physics_index}f{forcing_index}"))
+                              c("{sub_experiment_id}-r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
+                                "r{realization_index}i{initialization_index}p{physics_index}f{forcing_index}",
+                                "{sub_experiment_id}-i{initialization_index}p{physics_index}f{forcing_index}",
+                                "i{initialization_index}p{physics_index}f{forcing_index}"))
   if (!("sub_experiment_id" %in% colnames(data))) {
     data[["sub_experiment_id"]] <- rep("none", nrow(data))
   }
@@ -194,7 +207,15 @@ as.data.frame.cmip_results <- function(x, ...) {
   .cmip_parse_search(x)
 }
 
+
+
+
 .cmip_save_wget_one <- function(result, file, force_https = FALSE) {
+  old_mode <- Sys.umask(getOption("CIMADATA.MODE", default = Sys.umask(NA)))
+  on.exit(
+    Sys.umask(old_mode)
+  )
+
   wget_base <- glue::glue("https://{result$index_node}/esg-search/wget")
 
   script <- httr::content(httr::GET(wget_base,
@@ -285,6 +306,11 @@ as.data.frame.cmip_results <- function(x, ...) {
 #' @export
 cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_default_user_get(),
                           system_config = "", force_https = FALSE, progress_bar = TRUE) {
+  old_mode <- Sys.umask(getOption("CIMADATA.MODE", default = Sys.umask(NA)))
+  on.exit(
+    Sys.umask(old_mode)
+  )
+
   downloaded_files <- rep(NA_character_, length = length(results))
   pass <- cmip_key_get(user = user)
   user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
@@ -293,7 +319,7 @@ cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_def
     system_config <- paste0(system_config, " && ")
   }
 
-  on.exit({
+  on.exit(add = TRUE, {
     # If already started downloading
     if (exists("dow")) {
       if (dow$is_alive()) {
@@ -415,6 +441,11 @@ print.cmip_size <- function(x, ...) {
 #'
 #' @export
 cmip_consolidate <- function(files = NULL, base_dir) {
+  old_mode <- Sys.umask(getOption("CIMADATA.MODE", default = Sys.umask(NA)))
+  on.exit(
+    Sys.umask(old_mode)
+  )
+
   if (is.null(files)) {
     download_dir <- paste0(base_dir, "/Download/Format/Data_used")
     files <- list.files(download_dir, recursive = TRUE, pattern = ".nc", full.names = TRUE)
@@ -433,8 +464,8 @@ cmip_consolidate <- function(files = NULL, base_dir) {
                                     grid_label, drop = TRUE))
   out <- split(data, uniques)
   unlist(lapply(out, function(dt) {
-    on.exit({
-      #Remove temporaty files, if present
+    on.exit(add = TRUE, {
+      #Remove temporary files, if present
       tempfiles <- list.files(unique(dt$base_dir), pattern = "*.ncecat.tmp",
                               recursive = TRUE, full.names = TRUE)
       file.remove(tempfiles)
