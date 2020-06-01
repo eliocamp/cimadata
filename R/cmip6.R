@@ -306,11 +306,6 @@ as.data.frame.cmip_results <- function(x, ...) {
 #' @export
 cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_default_user_get(),
                           system_config = "", force_https = FALSE, progress_bar = TRUE) {
-  old_mode <- Sys.umask(getOption("CIMADATA.MODE", default = Sys.umask(NA)))
-  on.exit(
-    Sys.umask(old_mode)
-  )
-
   downloaded_files <- rep(NA_character_, length = length(results))
   pass <- cmip_key_get(user = user)
   user <- paste0("https://esgf-node.llnl.gov/esgf-idp/openid/", user)
@@ -319,7 +314,12 @@ cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_def
     system_config <- paste0(system_config, " && ")
   }
 
-  on.exit(add = TRUE, {
+  old_mode <- Sys.umask(getOption("CIMADATA.MODE", default = Sys.umask(NA)))
+  on.exit(
+
+  )
+  on.exit({
+    Sys.umask(old_mode)
     # If already started downloading
     if (exists("dow")) {
       if (dow$is_alive()) {
@@ -337,7 +337,7 @@ cmip_download <- function(results, base_dir = cmip_folder_get(), user = cmip_def
     }
 
     return(downloaded_files)
-  })
+  }, add = TRUE)
 
 
   for (i in seq_along(results)) {
@@ -464,7 +464,7 @@ cmip_consolidate <- function(files = NULL, base_dir) {
                                     grid_label, drop = TRUE))
   out <- split(data, uniques)
   unlist(lapply(out, function(dt) {
-    on.exit(add = TRUE, {
+    on.exit({
       #Remove temporary files, if present
       tempfiles <- list.files(unique(dt$base_dir), pattern = "*.ncecat.tmp",
                               recursive = TRUE, full.names = TRUE)
@@ -472,7 +472,7 @@ cmip_consolidate <- function(files = NULL, base_dir) {
 
       # Remove other files
       file.remove(dt[dt$remove == TRUE, ]$file)
-    })
+    }, add = TRUE)
 
     if (nrow(dt) == 0) {
       return(NULL)
