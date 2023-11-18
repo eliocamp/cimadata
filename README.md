@@ -1,6 +1,8 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+Este paquete ya no está en desarrollo. Usar rcmip6: https://github.com/eliocamp/rcmip6
+
 # cimadata
 
 <!-- badges: start -->
